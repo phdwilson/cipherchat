@@ -1,0 +1,17 @@
+{
+  "name": "密讯 CipherChat",
+  "short_name": "密讯",
+  "description": "端到端 AES-256-GCM 加密的即时通讯中继 · 服务器零知识",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f0b1e",
+  "theme_color": "#7c3aed",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

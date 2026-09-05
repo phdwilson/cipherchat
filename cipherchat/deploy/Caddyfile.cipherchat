@@ -1,0 +1,34 @@
+# CipherChat 生产环境 Caddy 网关配置
+# 监听非标端口（默认 2053，可在 setup.sh 中修改），不占用 80/443
+# 80/443 留给你的 Reality 协议使用，互不干扰
+
+:2053 {
+	# 访问日志默认关闭（避免任何查询串/路径落入日志；需要时可打开）
+	# log {
+	# 	output file /var/log/caddy/cipherchat-access.log
+	# }
+
+	# 带有 XTransformPort 查询参数的请求（如 WebSocket 中继）转发到对应端口
+	@transform_port_query {
+		query XTransformPort=*
+	}
+
+	handle @transform_port_query {
+		reverse_proxy localhost:{query.XTransformPort} {
+			header_up Host {host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+
+	# 其余请求全部转发到 Next.js 主应用
+	handle {
+		reverse_proxy localhost:13000 {
+			header_up Host {host}
+			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-Proto {scheme}
+			header_up X-Real-IP {remote_host}
+		}
+	}
+}

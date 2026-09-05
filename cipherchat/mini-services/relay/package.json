@@ -1,0 +1,10 @@
+{
+  "name": "cipherchat-relay",
+  "version": "1.7.0",
+  "private": true,
+  "description": "CipherChat WebSocket relay service (messages / presence / typing / drive sync)",
+  "scripts": {
+    "dev": "cd ../.. && bun --hot mini-services/relay/index.ts",
+    "start": "cd ../.. && bun mini-services/relay/index.ts"
+  }
+}

@@ -1,0 +1,23 @@
+# CipherChat WebSocket 实时中继服务
+# 由 deploy/setup.sh 自动安装到 /etc/systemd/system/
+[Unit]
+Description=CipherChat WebSocket Relay
+After=network.target cipherchat-web.service
+
+[Service]
+Type=simple
+User=cipherchat
+Group=cipherchat
+WorkingDirectory=/opt/cipherchat
+EnvironmentFile=/opt/cipherchat/.env
+Environment=NODE_ENV=production
+ExecStart=/usr/local/bin/bun /opt/cipherchat/mini-services/relay/index.ts
+Restart=always
+RestartSec=3
+# 崩溃自动重启；日志仅含事件名与脱敏 ID，无 token / 无消息内容
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cipherchat-relay
+
+[Install]
+WantedBy=multi-user.target
