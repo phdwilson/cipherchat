@@ -19,8 +19,11 @@ function settingsFile() {
 
 async function loadCore() {
   if (core) return core
-  // workspace 开发：从 monorepo core dist 加载；打包后从 resources
+  // 打包后：优先加载自包含单文件 bundle（内联 archiver 等运行时依赖，避免 node_modules 缺失）
+  // 开发模式：从 monorepo core dist 直接加载，走 workspace 提升的 node_modules
   const candidates = [
+    path.join(process.resourcesPath || '', 'core', 'cipherzip-core.bundle.cjs'),
+    path.join(__dirname, '..', '..', 'core', 'dist', 'cipherzip-core.bundle.cjs'),
     path.join(__dirname, '..', '..', 'core', 'dist', 'index.js'),
     path.join(process.resourcesPath || '', 'core', 'index.js'),
     path.join(__dirname, '..', 'node_modules', '@cipherzip', 'core', 'dist', 'index.js'),

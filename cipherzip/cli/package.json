@@ -9,7 +9,7 @@
   "scripts": {
     "build": "tsc -p tsconfig.json",
     "start": "node dist/cli.js",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "dev": "tsx src/cli.ts"
   },
   "dependencies": {

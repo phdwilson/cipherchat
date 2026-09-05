@@ -48,6 +48,8 @@ export default function ExtractPage({ notify }: { notify: (m: string) => void })
       })
       if (!r.ok) notify(r.error || '解压失败')
       else notify(`已解压 ${r.files?.length || 0} 项`)
+    } catch (e) {
+      notify(String(e))
     } finally {
       setBusy(false)
     }

@@ -10,13 +10,14 @@
     "cipherzip/shared"
   ],
   "scripts": {
-    "build:core": "npm run build -w @cipherzip/core",
-    "build:cli": "npm run build -w @cipherzip/cli",
-    "build:desktop": "npm run build -w @cipherzip/desktop",
-    "build:all": "npm run build:core && npm run build:cli && npm run build:desktop",
-    "test": "npm run test -w @cipherzip/core && npm run test -w @cipherzip/cli",
-    "test:e2e": "npm run test:e2e -w @cipherzip/core",
-    "pack:win": "npm run pack:win -w @cipherzip/desktop",
+    "build:shared": "npm run build -w @cipherzip/shared",
+    "build:core": "npm run build:shared && npm run build -w @cipherzip/core",
+    "build:cli": "npm run build:core && npm run build -w @cipherzip/cli",
+    "build:desktop": "npm run build:core && npm run build -w @cipherzip/desktop",
+    "build:all": "npm run build:shared && npm run build -w @cipherzip/core && npm run build -w @cipherzip/cli && npm run build -w @cipherzip/desktop",
+    "test": "npm run build:shared && npm run test -w @cipherzip/core && npm run test -w @cipherzip/cli",
+    "test:e2e": "npm run build:shared && npm run test:e2e -w @cipherzip/core",
+    "pack:win": "npm run build:core && npm run pack:win -w @cipherzip/desktop",
     "lint": "npm run lint -w @cipherzip/core --if-present"
   },
   "engines": {

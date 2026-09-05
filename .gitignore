@@ -18,10 +18,7 @@ data/
 db/
 prisma/dev.db*
 # 构建缓存
-cipherzip/desktop/release/win-unpacked/
-cipherzip/desktop/release/builder-debug.yml
-cipherzip/desktop/release/CipherZip-Setup-*.zip
-cipherzip/desktop/release/CipherZip-Windows-Bundle-*.zip
+cipherzip/desktop/release/
 # 开发临时归档
 *.ccz
 !docs/**/*.ccz

@@ -33,7 +33,7 @@ export default function SettingsPage({
   }, [])
 
   const save = async () => {
-    await api.saveSettings(s)
+    await api.saveSettings({ ...s, theme })
     notify('设置已保存')
   }
 

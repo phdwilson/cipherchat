@@ -12,9 +12,10 @@
     }
   },
   "scripts": {
-    "build": "tsc -p tsconfig.json",
+    "build": "tsc -p tsconfig.json && npm run bundle",
+    "bundle": "esbuild dist/index.js --bundle --platform=node --format=cjs --target=node18 --outfile=dist/cipherzip-core.bundle.cjs",
     "test": "vitest run",
-    "test:e2e": "vitest run tests/e2e",
+    "test:e2e": "vitest run e2e",
     "test:watch": "vitest",
     "lint": "tsc -p tsconfig.json --noEmit"
   },
@@ -32,6 +33,7 @@
     "@types/qrcode": "^1.5.5",
     "@types/yauzl": "^2.10.3",
     "@types/yazl": "^2.4.5",
+    "esbuild": "^0.28.2",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

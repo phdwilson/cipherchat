@@ -6,6 +6,7 @@ import MeshPage from './pages/MeshPage'
 import SettingsPage from './pages/SettingsPage'
 import BridgePage from './pages/BridgePage'
 import HomePage from './pages/HomePage'
+import { api } from './lib/api'
 
 export type PageId = 'home' | 'compress' | 'extract' | 'p2p' | 'mesh' | 'bridge' | 'settings'
 
@@ -33,6 +34,7 @@ export default function App() {
   const [page, setPage] = useState<PageId>('home')
   const [theme, setTheme] = useState<'light' | 'dark' | 'system'>('system')
   const [toast, setToast] = useState<string | null>(null)
+  const [settingsLoaded, setSettingsLoaded] = useState(false)
 
   const resolvedTheme = useMemo(() => {
     if (theme !== 'system') return theme
@@ -42,6 +44,30 @@ export default function App() {
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', resolvedTheme)
   }, [resolvedTheme])
+
+  // 启动时加载上次保存的主题，避免每次重启都回退到「跟随系统」
+  useEffect(() => {
+    let cancelled = false
+    api.getSettings().then((raw) => {
+      if (cancelled) return
+      const savedTheme = (raw as { theme?: string }).theme
+      if (savedTheme === 'light' || savedTheme === 'dark' || savedTheme === 'system') {
+        setTheme(savedTheme)
+      }
+      setSettingsLoaded(true)
+    })
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  // 主题变化时持久化（保留其余设置字段，避免覆盖）
+  useEffect(() => {
+    if (!settingsLoaded) return
+    api.getSettings().then((raw) => {
+      api.saveSettings({ ...raw, theme })
+    })
+  }, [theme, settingsLoaded])
 
   const notify = (msg: string) => {
     setToast(msg)
