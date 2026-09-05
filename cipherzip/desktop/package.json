@@ -1,0 +1,109 @@
+{
+  "name": "@cipherzip/desktop",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CipherZip 桌面端 — 全中文现代扁平化加密压缩软件",
+  "main": "electron/main.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build:ui": "vite build",
+    "build": "npm run build:ui",
+    "pack:win": "npm run build:ui && electron-builder --win portable zip --x64 --publish never -c.win.signAndEditExecutable=false",
+    "pack:dir": "npm run build:ui && electron-builder --dir --publish never",
+    "pack:linux": "npm run build:ui && electron-builder --linux AppImage --publish never",
+    "pack:win:nsis": "npm run build:ui && electron-builder --win nsis --x64 --publish never -c.win.signAndEditExecutable=false",
+    "start:electron": "electron .",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "@cipherzip/core": "*",
+    "@cipherzip/shared": "*"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "electron": "33.2.1",
+    "electron-builder": "^25.1.8",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "typescript": "^5.7.2",
+    "vite": "^6.0.3"
+  },
+  "build": {
+    "appId": "app.cipherzip.desktop",
+    "productName": "CipherZip密匣",
+    "copyright": "Copyright © Cipher Platform",
+    "directories": {
+      "output": "release",
+      "buildResources": "resources"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "../core/dist",
+        "to": "core",
+        "filter": [
+          "**/*"
+        ]
+      }
+    ],
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "artifactName": "CipherZip-Setup-${version}-${arch}.${ext}",
+      "requestedExecutionLevel": "asInvoker",
+      "signAndEditExecutable": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "CipherZip密匣",
+      "installerLanguages": [
+        "zh_CN"
+      ],
+      "language": "2052",
+      "displayLanguageSelector": false,
+      "installerIcon": "resources/icon.ico",
+      "uninstallerIcon": "resources/icon.ico",
+      "license": "resources/license-zh.txt"
+    },
+    "portable": {
+      "artifactName": "CipherZip-Portable-${version}.${ext}"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "dir"
+      ],
+      "category": "Utility"
+    },
+    "asar": true
+  },
+  "author": "Cipher Platform"
+}

@@ -1,0 +1,266 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// 聊天会话（token 仅存哈希，防拖库泄露；pubId = 客户端持久设备标识，用于消息归属与在线展示）
+model ChatSession {
+  id            String   @id @default(uuid())
+  tokenHash     String   @unique
+  channelKeyId  String
+  pubId         String   @default("") // 稳定设备标识（客户端 localStorage 持久 UUID；旧记录为空时回退会话 ID）
+  deviceLabel   String
+  deviceInfoEnc String   @default("") // 加密的设备详情 JSON（型号/系统/屏幕/触摸支持，服务端不可读）
+  ip            String
+  geoDisclosure String   @default("full") // IP 披露级别：full=完整IP+地区 / region=仅地区 / hidden=不披露（需管理员允许）
+  createdAt     DateTime @default(now())
+  expiresAt     DateTime
+  lastSeenAt    DateTime @default(now())
+
+  @@index([channelKeyId])
+  @@index([expiresAt])
+  @@index([pubId]) // v1.7.0：审计页按 pubId 查询
+}
+
+// 聊天消息（payload = base64(iv + AES-256-GCM 密文)，服务端不可读）
+model ChatMessage {
+  id           String    @id @default(uuid())
+  channelKeyId String
+  senderId     String
+  payload      String
+  fileId       String?  // 若携带文件，指向 ChatFile.id（明文 ID，不含内容）
+  replyToId    String?
+  readAt       DateTime? // 首次被其他设备阅读的时间（已读回执，仅时间戳元数据）
+  burnAt       DateTime? // v1.5.0 阅后即焚：到期自动删除（由读取事件或发送时设定）
+  createdAt    DateTime  @default(now())
+  reactions    ChatReaction[] // v1.6.0 表情回应
+  readReceipts ChatReadReceipt[] // v1.7.0：补上反向关系（readers 跨频道过滤需要）
+  pollVotes    ChatPollVote[]    // v1.7.0：加密投票
+
+  @@index([channelKeyId, createdAt])
+  @@index([burnAt])
+  @@index([senderId]) // v1.7.0：按发送者查询/删除
+}
+
+// v1.7.0 加密投票：选项序号是明文元数据（与 emoji 回应同级），投票人与题目选项的
+// 对应关系在客户端 ToyPayload 内端到端加密；服务器只见「谁对哪条消息投了第几个选项」
+model ChatPollVote {
+  id        String   @id @default(uuid())
+  messageId String
+  channelKeyId String
+  voterId   String // 投票人 pubId
+  optionIndex Int    // 选项下标（明文元数据，不暴露选项文字）
+  updatedAt DateTime @updatedAt
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, voterId]) // 一人一票，可改票
+  @@index([channelKeyId])
+  @@index([messageId])
+}
+
+// v1.6.0 表情回应（Reactions）：同一读者对同一消息的同一 emoji 唯一；
+// emoji 本身不含明文语义之外的信息，作为元数据明文存储，与已读回执同级
+model ChatReaction {
+  id           String      @id @default(uuid())
+  messageId    String
+  channelKeyId String
+  readerId     String // 反应者 pubId
+  emoji        String
+  createdAt    DateTime    @default(now())
+  message      ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, readerId, emoji])
+  @@index([channelKeyId])
+  @@index([messageId])
+}
+
+// v1.5.0 成员级已读回执链：每条消息 × 每个读者一条记录（谁读了可知）
+model ChatReadReceipt {
+  id        String   @id @default(uuid())
+  messageId String
+  readerId  String // 读者 pubId
+  readAt    DateTime @default(now())
+  message   ChatMessage @relation(fields: [messageId], references: [id], onDelete: Cascade)
+
+  @@unique([messageId, readerId])
+  @@index([messageId])
+  @@index([readerId]) // v1.7.0：按读者维度查询回执
+}
+
+// v1.5.0 频道成员角色体系：owner=创建者 / admin=管理员 / member=普通成员 / observer=仅旁听
+model ChatMember {
+  id          String   @id @default(uuid())
+  channelKeyId String
+  pubId       String
+  role        String   @default("member") // owner | admin | member | observer
+  joinedAt    DateTime @default(now())
+
+  @@unique([channelKeyId, pubId])
+  @@index([channelKeyId])
+  @@index([pubId]) // v1.7.0：跨频道审计查询
+}
+
+// v1.5.0 P2P 离线信箱：收件人公钥加密的信封，取走即删，服务器零知识
+model MailboxItem {
+  id         String   @id @default(uuid())
+  recipientPubId String
+  senderPubId    String
+  envelope   String // X25519+AES-GCM 加密的消息信封（服务端不可读）
+  createdAt  DateTime @default(now())
+
+  @@index([recipientPubId])
+}
+
+// v1.5.0 设备身份密钥对公钥（X25519，私钥永不出设备）—— 离线信箱加密用
+model DeviceIdentity {
+  pubId     String   @id
+  publicKey String // base64 X25519 公钥
+  updatedAt DateTime @updatedAt
+}
+
+// 聊天文件（分块密文存储在 data/chat/{id}/ 目录）
+model ChatFile {
+  id           String   @id @default(uuid())
+  channelKeyId String
+  ready        Boolean  @default(false)
+  totalChunks  Int
+  totalBytes   BigInt
+  createdAt    DateTime @default(now())
+  // v1.7.0 闪照：阅后即焚图片 —— 首个设备开始下载即锁定，流式传输结束后删除密文
+  viewOnce        Boolean   @default(false)
+  viewOnceBurnedAt DateTime? // 首次下载开始的时间（非 null 即拒绝再次下载）
+
+  @@index([channelKeyId])
+}
+
+// 网盘仓库（keyHash = PBKDF2(密钥, driveId)，driveId 为随机生成的 8 位 ID）
+model DriveRepo {
+  id          String   @id @default(uuid())
+  driveId     String   @unique
+  keyHash     String
+  quotaBytes  BigInt
+  usedBytes   BigInt   @default(0)
+  createdAt   DateTime @default(now())
+  lastActiveAt DateTime @default(now())
+
+  @@unique([driveId, keyHash])
+}
+
+// 网盘会话
+model DriveSession {
+  id         String   @id @default(uuid())
+  tokenHash  String   @unique
+  repoId     String
+  deviceLabel String
+  ip         String
+  createdAt  DateTime @default(now())
+  expiresAt  DateTime
+  lastSeenAt DateTime @default(now())
+
+  @@index([repoId])
+}
+
+// 网盘文件（meta 为加密后的文件元信息 JSON，服务端不可读）
+model DriveFile {
+  id          String   @id @default(uuid())
+  repoId      String
+  ready       Boolean  @default(false)
+  totalChunks Int
+  totalBytes  BigInt
+  meta        String
+  createdAt   DateTime @default(now())
+
+  @@index([repoId])
+}
+
+// 管理员配置（全局单行：网盘创建超级密钥 + 自毁密钥 + 功能开关，均只存哈希）
+model AdminConfig {
+  id                String   @id @default(uuid())
+  superKeyHash      String   @unique
+  destroyKeyHash    String   @unique
+  wipeEpoch         Int      @default(0)
+  voiceEnabled      Boolean  @default(true)  // 语音频道
+  whisperEnabled    Boolean  @default(true)  // 私聊/whisper
+  friendEnabled     Boolean  @default(true)  // 好友系统
+  avatarUploadEnabled Boolean @default(true)  // 头像上传
+  p2pEnabled        Boolean  @default(true)  // P2P 模式
+  // —— IP 披露隐私策略（仅管理员可改；普通用户的「不披露」选项受此开关约束）——
+  // allowHiddenGeo=true 时用户才可在加入频道时选择「不披露任何 IP/地区信息」
+  allowHiddenGeo    Boolean  @default(true)
+  // —— Dead Man's Switch（v1.5.0）：开关默认对用户隐藏，仅管理员可开放展示 ——
+  dmsEnabled        Boolean  @default(false) // 是否向所有用户展示 DMS 开关
+  // —— WebRTC TURN 中继配置 ——
+  // 静态长期凭证：客户端直接使用，admin 后台填写后立即对所有客户端生效
+  // 没配置时语音只能走 STUN P2P（对称 NAT / CGNAT 下大概率失败）
+  turnEnabled       Boolean  @default(false) // 是否启用 TURN 中继
+  turnUrls          String   @default("")    // 多个地址用换行或逗号分隔，例：turn:example.com:3478?transport=udp\nturn:example.com:3478?transport=tcp
+  turnUsername      String   @default("")    // 长期凭证用户名
+  turnCredential    String   @default("")    // 长期凭证密码（HMAC 静态密钥也存此字段，按 turnSecretMode 区分；明文存储，请确保服务器隔离）
+  turnSecretMode    String   @default("static") // static=长期凭证 time-limited=短期凭证（HMAC-SHA1 + 时间窗口，需 turnserver.conf 的 use-auth-secret）
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+}
+
+// IP 地理位置缓存
+model IpCache {
+  ip        String   @id
+  region    String
+  updatedAt DateTime @default(now())
+}
+
+// 服务器主密钥（单行）：用于「免密钥邀请」对频道密码做服务端二次加密
+// 仅存生成的主密钥材料本身，数据库泄露 ≠ 直接拿到频道密码明文（仍需此行）
+model ServerSecret {
+  id         String   @id @default(uuid())
+  inviteKey  String // 随机 64 hex；AES-256-GCM 主密钥来源
+  createdAt  DateTime @default(now())
+}
+
+// v1.5.0 Dead Man's Switch：用户注册自己的 DMS —— 连续 N 天无任何会话活动即触发动作
+// action: 'wipe' = 触发全局自毁；'notify' = 向 notifyPayload（加密信箱信封）投递通知
+model DeadMansSwitch {
+  id            String   @id @default(uuid())
+  pubId         String   @unique
+  graceDays     Int // 无活动宽限天数（1-365）
+  action        String   @default("notify") // wipe | notify
+  notifyMailbox String   @default("") // 收件人 pubId（notify 动作时向其信箱投递提醒）
+  armedAt       DateTime @default(now())
+  lastCheckIn   DateTime @default(now()) // 最近一次活动心跳
+}
+
+// 邀请令牌：二维码/链接分享。data 为服务端主密钥 AES-GCM 加密的 JSON：
+//   { channelId, password? } —— 含 password 即免密钥模式；不含则受邀者需输入密码
+model InviteToken {
+  id        String   @id @default(uuid())
+  code      String   @unique // 出现在链接中的短码（不含任何机密）
+  data      String // 服务端主密钥加密的载荷
+  createdBy String // 创建者 pubId
+  role      String   @default("member") // v1.5.0 受邀者角色：admin | member | observer
+  uses      Int      @default(0)
+  maxUses   Int      @default(0) // 0 = 不限次数
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([expiresAt])
+  @@index([createdBy]) // v1.7.0：审计页按创建者查询
+}
+
+// 密钥轮换任务：把旧 channelKeyId 下所有消息/文件迁移到新 channelKeyId
+// 分阶段由客户端驱动（只有客户端能解密旧密文并用新密钥重加密）
+model ChatRotation {
+  id          String   @id @default(uuid())
+  oldKeyId    String
+  newKeyId    String   @unique // sha256(chan:newPassword) 已存在时拒绝轮换
+  createdBy   String
+  phase       String   @default("messages") // messages -> files -> done
+  msgDone     Int      @default(0)
+  fileTotal   Int      @default(0)
+  fileDone    Int      @default(0)
+  notifyPending Boolean @default(false) // v1.5.0 完成后待 relay 广播轮换通知
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+}

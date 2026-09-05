@@ -1,0 +1,25 @@
+# CipherChat Web 主应用（Next.js standalone）
+# 由 deploy/setup.sh 自动安装到 /etc/systemd/system/
+[Unit]
+Description=CipherChat Web (Next.js)
+After=network.target
+
+[Service]
+Type=simple
+User=cipherchat
+Group=cipherchat
+WorkingDirectory=/opt/cipherchat
+EnvironmentFile=/opt/cipherchat/.env
+Environment=NODE_ENV=production
+Environment=PORT=13000
+Environment=HOSTNAME=127.0.0.1
+ExecStart=/usr/local/bin/bun /opt/cipherchat/.next/standalone/server.js
+Restart=always
+RestartSec=3
+# 日志输出到 journald；代码保证不打印任何 token / 消息内容
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=cipherchat-web
+
+[Install]
+WantedBy=multi-user.target
