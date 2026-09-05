@@ -1,0 +1,5 @@
+请运行：CipherZip-Portable-1.0.0.exe
+（Windows 11 x64 双击即可，绿色便携，等同安装包体验）
+
+若需 zip 解压版，在仓库根目录执行：
+  bash scripts/pack-windows.sh

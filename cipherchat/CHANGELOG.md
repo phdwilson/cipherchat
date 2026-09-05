@@ -240,3 +240,15 @@
 - 好友系统（好友码导入）、whisper 私聊、P2P DataChannel 文字模式。
 - WebSocket 中继服务（Socket.IO，零知识转发）；管理员后台功能开关。
 - SQLite (Prisma) 存储，仅存哈希与密文；WAL 模式多进程并发优化。
+
+## v1.9.0-bridge（CipherZip 协同）
+
+- 新增桌面客户端桥接模块 `src/lib/server/client-bridge.ts`
+- 新增 API：
+  - `POST /api/client/register`
+  - `POST /api/client/heartbeat`
+  - `POST /api/client/archive/announce`
+  - `GET  /api/client/archive/lookup`
+  - `POST /api/client/signal/offer|answer`
+  - `GET  /api/client/signal/poll`
+- 仅存储密文指纹与能力宣告，不接收密码/明文

@@ -1,0 +1,27 @@
+node_modules/
+dist/
+build/
+out/
+*.log
+.env
+.env.local
+.DS_Store
+Thumbs.db
+coverage/
+.turbo/
+*.tsbuildinfo
+tmp/
+.temp/
+.next/
+standalone/
+data/
+db/
+prisma/dev.db*
+# 构建缓存
+cipherzip/desktop/release/win-unpacked/
+cipherzip/desktop/release/builder-debug.yml
+cipherzip/desktop/release/CipherZip-Setup-*.zip
+cipherzip/desktop/release/CipherZip-Windows-Bundle-*.zip
+# 开发临时归档
+*.ccz
+!docs/**/*.ccz

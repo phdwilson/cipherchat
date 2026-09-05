@@ -1,0 +1,27 @@
+{
+  "name": "cipher-platform",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CipherChat + CipherZip 端到端加密平台（模块化 monorepo）",
+  "workspaces": [
+    "cipherzip/core",
+    "cipherzip/cli",
+    "cipherzip/desktop",
+    "cipherzip/shared"
+  ],
+  "scripts": {
+    "build:core": "npm run build -w @cipherzip/core",
+    "build:cli": "npm run build -w @cipherzip/cli",
+    "build:desktop": "npm run build -w @cipherzip/desktop",
+    "build:all": "npm run build:core && npm run build:cli && npm run build:desktop",
+    "test": "npm run test -w @cipherzip/core && npm run test -w @cipherzip/cli",
+    "test:e2e": "npm run test:e2e -w @cipherzip/core",
+    "pack:win": "npm run pack:win -w @cipherzip/desktop",
+    "lint": "npm run lint -w @cipherzip/core --if-present"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "author": "Cipher Platform",
+  "license": "MIT"
+}
